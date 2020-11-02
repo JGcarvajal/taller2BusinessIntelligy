@@ -1,0 +1,2 @@
+El codigo se realizo desde una maquina virtual de Linux, ubuntu 20.04
+La base de datos se llama spotifydatawh
