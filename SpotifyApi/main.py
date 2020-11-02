@@ -31,25 +31,27 @@ client_credentials_manager = SpotifyClientCredentials(client_id=cid, client_secr
 sp = spotipy.Spotify(client_credentials_manager=client_credentials_manager)
 sp.trace = False
 
+#Consultamos la lista de artistas
 req_artist = sp.artists(["2ye2Wgw4gimLv2eAKyk1NB","16oZKvXb6WkQlVAjwo2Wbg","5M52tdBnJaKSvOpJGz8mfZ","36QJpDe2go2KgaRleHCDTp",
                          "1zng9JZpblpk48IPceRWs8","74ASZWbe4lXaubB36ztrGX","3fMbdgg4jU18AjLCKBhRSm"])
 
 
-
+#variables para almacenar los objetos
 ids = []
 song = []
 artist = []
 
-img = ""
-#if len(a["images"]) > 0:
-    #img = a["images"][0]["url"]
+#iteramos los artistas
 for i in range(len(req_artist["artists"])):
     art = req_artist["artists"][i]
     artist.append([art["name"], art["popularity"], art["type"], art["uri"], art["followers"]["total"],
                fechaunix, "api", art["id"]])
 
+    #consultamos las canciones de cada artista
     tracks = sp.artist_top_tracks(art["id"])
     songs = tracks["tracks"]
+
+    #iteramos las canciones
     for i in range(len(songs)):
         s = songs[i]
         ids.append(s["id"])
@@ -59,15 +61,12 @@ for i in range(len(req_artist["artists"])):
             [s["name"], s["type"], s["artists"][0]["id"], s["album"]["name"],s["track_number"],s["popularity"],s["id"],s["uri"],
              fecha, "", fechaunix,"api"])
 
+#pasamos los artistas a un DataFrame
 dataArtists = pd.DataFrame(artist)
 
-features = sp.audio_features(ids)
-df = pd.DataFrame(features)
+#pasamos las canciones a un DataFrame
 dataSongs = pd.DataFrame(song)
 
-df.to_csv("onedayonesong-features", sep=';', encoding='utf-8')
-dataSongs.to_csv("onedayonesong-datasong", sep=';', encoding='utf-8')
-dataArtists.to_csv("onedayonesong-dataartist", sep=';', encoding='utf-8')
 try:
     # Conectarse a la base de datos
     connstr = "host=%s port=%s user=%s password=%s dbname=%s" % (PSQL_HOST, PSQL_PORT, PSQL_USER, PSQL_PASS, PSQL_DB)
@@ -76,6 +75,7 @@ try:
     # Abrir un cursor para realizar operaciones sobre la base de datos
     cur = conn.cursor()
 
+    #Copiamos los datafremes a las tabla de Base de Datos
     ouArtist = io.StringIO()
     dataArtists.to_csv(ouArtist, sep='\t', header=False, index=False)
     ouArtist.seek(0)
@@ -88,13 +88,14 @@ try:
     contents2 = ouSongs.getvalue()
     cur.copy_from(ouSongs, 'cancion', null="")  # null values become ''
 
+    #Hacemos commit de la transaccion
     conn.commit()
 
     # Cerrar la conexión con la base de datos
     cur.close()
     conn.close()
 
-    # Hacer algo con los datos
+    # Confirmamos la ejecusion
     print("Ejecutado")
 
 except psycopg2.Error as e:
